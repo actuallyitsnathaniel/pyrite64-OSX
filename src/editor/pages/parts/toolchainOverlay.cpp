@@ -75,8 +75,13 @@ bool Editor::ToolchainOverlay::draw()
 {
   #if defined(_WIN32)
     constexpr bool isWindows = true;
+    constexpr bool isApple   = false;
+  #elif defined(__APPLE__)
+    constexpr bool isWindows = false;
+    constexpr bool isApple   = true;
   #else
     constexpr bool isWindows = false;
+    constexpr bool isApple   = false;
   #endif
 
   auto BUTTON_SIZE = RAW_BUTTON_SIZE * ImGui::Theme::zoomFactor;
@@ -111,13 +116,13 @@ bool Editor::ToolchainOverlay::draw()
     ImGui::Dummy({0, 10_px});
 
     constexpr const char *STEPS[] = {
-      isWindows ? "MSYS2" : "N64_INST",
+      isWindows ? "MSYS2" : (isApple ? "Homebrew" : "N64_INST"),
       "Toolchain",
       "Libdragon",
       "Tiny3D"
     };
     bool STEP_DONE[] = {
-      (isWindows)? !toolState.mingwPath.empty() : !toolState.toolchainPath.empty(),
+      isWindows ? !toolState.mingwPath.empty() : !toolState.toolchainPath.empty(),
       toolState.hasToolchain,
       toolState.hasLibdragon && toolState.upToDateLibs,
       toolState.hasTiny3d && toolState.upToDateLibs
@@ -163,6 +168,31 @@ bool Editor::ToolchainOverlay::draw()
           ImGui::SetCursorPosX(posX);
           ImGui::Text("During the installation, keep the default path as is at \"C:\\msys64\".");
         }
+      } else if(isApple)
+      {
+        if(allDone) {
+          ImGui::Text(
+            "Toolchain found in: %s\n"
+            "The N64 toolchain is correctly installed.\n"
+            "If you wish to update it, press the update button below.",
+            ctx.toolchain.getState().toolchainPath.string().c_str()
+          );
+        } else {
+          ImGui::Text(
+            "The N64 toolchain is missing or not properly installed.\n"
+            "Click the button below to install the required components.\n"
+            "A Terminal window will open and build the MIPS64 toolchain from source.\n"
+            "This takes 15-30 minutes on first install — please leave it running.\n"
+          );
+          ImGui::Dummy({0, 4_px});
+          ImGui::SetCursorPosX(posX);
+          ImGui::TextLinkOpenURL("Requires Homebrew to be installed.", "https://brew.sh");
+          ImGui::SetCursorPosX(posX);
+          ImGui::Text(
+            "After installation, set N64_INST in your shell profile (~/.zshrc)\n"
+            "and restart Pyrite64 for it to take effect."
+          );
+        }
       } else
       {
         if(allDone) {
@@ -175,7 +205,7 @@ bool Editor::ToolchainOverlay::draw()
         {
           ImGui::Text(
             "The N64 toolchain is missing or not properly installed.\n"
-            "Automatic installation is currently only available on Windows.\n"
+            "Automatic installation is currently only available on Windows and macOS.\n"
             "Please follow the guide for libdragon and tiny3d here:\n"
           );
 
@@ -195,23 +225,32 @@ bool Editor::ToolchainOverlay::draw()
           );
         }
       }
-      
+
       ImGui::SetCursorPos({
         (ImGui::GetWindowWidth() - 150_px) * 0.5f,
         ImGui::GetCursorPosY() + 20_px
       });
 
-      if(STEP_DONE[0] && isWindows) {
+      if((isWindows && STEP_DONE[0]) || isApple) {
         if (ImGui::Button(allDone ? "Update" : "Install", {150_px, 40_px})) {
           ctx.toolchain.install();
         }
       }
 
     } else {
-      ImGui::Text(
-        "Installing and updating the toolchain.\n"
-        "This process may take a few minutes, please wait..."
-      );
+      if(isApple) {
+        ImGui::Text(
+          "Installing and updating the toolchain.\n"
+          "Check the Terminal window that opened for progress.\n"
+          "Building the MIPS64 toolchain from source takes 15-30 minutes.\n"
+          "Please leave the Terminal window open until it finishes."
+        );
+      } else {
+        ImGui::Text(
+          "Installing and updating the toolchain.\n"
+          "This process may take a few minutes, please wait..."
+        );
+      }
     }
   
     // back button

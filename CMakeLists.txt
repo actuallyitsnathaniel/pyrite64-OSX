@@ -345,6 +345,59 @@ if(MINGW)
     )
 endif()
 
+if(APPLE)
+    # Generate icon.icns from the existing 256x256 windowIcon.png
+    set(ICON_SRC "${CMAKE_CURRENT_SOURCE_DIR}/data/img/windowIcon.png")
+    set(ICONSET_DIR "${CMAKE_CURRENT_BINARY_DIR}/pyrite64.iconset")
+    set(ICNS_FILE "${CMAKE_CURRENT_BINARY_DIR}/icon.icns")
+
+    add_custom_command(OUTPUT "${ICNS_FILE}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${ICONSET_DIR}"
+        COMMAND sips -z 16  16  "${ICON_SRC}" --out "${ICONSET_DIR}/icon_16x16.png"
+        COMMAND sips -z 32  32  "${ICON_SRC}" --out "${ICONSET_DIR}/icon_16x16@2x.png"
+        COMMAND sips -z 32  32  "${ICON_SRC}" --out "${ICONSET_DIR}/icon_32x32.png"
+        COMMAND sips -z 64  64  "${ICON_SRC}" --out "${ICONSET_DIR}/icon_32x32@2x.png"
+        COMMAND sips -z 128 128 "${ICON_SRC}" --out "${ICONSET_DIR}/icon_128x128.png"
+        COMMAND sips -z 256 256 "${ICON_SRC}" --out "${ICONSET_DIR}/icon_128x128@2x.png"
+        COMMAND sips -z 256 256 "${ICON_SRC}" --out "${ICONSET_DIR}/icon_256x256.png"
+        COMMAND iconutil -c icns "${ICONSET_DIR}" -o "${ICNS_FILE}"
+        DEPENDS "${ICON_SRC}"
+        COMMENT "Generating icon.icns"
+    )
+    add_custom_target(pyrite64_icns DEPENDS "${ICNS_FILE}")
+    add_dependencies(pyrite64 pyrite64_icns)
+
+    set_target_properties(pyrite64 PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_BUNDLE_NAME "Pyrite64"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.htd.pyrite64"
+        MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_ICON_FILE "icon.icns"
+    )
+
+    # Copy icon into bundle Resources/
+    target_sources(pyrite64 PRIVATE "${ICNS_FILE}")
+    set_source_files_properties("${ICNS_FILE}" PROPERTIES
+        MACOSX_PACKAGE_LOCATION Resources)
+
+    # Copy data/ and n64/ directories into bundle Resources/ preserving structure.
+    # Use a post-build command instead of target_sources to avoid CMake trying to compile
+    # non-source files (e.g. .cpp files inside n64/) that happen to be globbed.
+    add_custom_command(TARGET pyrite64 POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/data"
+            "$<TARGET_BUNDLE_DIR:pyrite64>/Contents/Resources/data"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/n64"
+            "$<TARGET_BUNDLE_DIR:pyrite64>/Contents/Resources/n64"
+        COMMAND ${CMAKE_COMMAND} -E copy
+            "${CMAKE_CURRENT_SOURCE_DIR}/vendored/libdragon/tools/build-toolchain.sh"
+            "$<TARGET_BUNDLE_DIR:pyrite64>/Contents/Resources/vendor/build-toolchain.sh"
+        COMMENT "Copying data/, n64/, and vendor tools into app bundle"
+    )
+endif()
+
 # Install rules for Linux
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     # Install the executable to $HOME/.local/bin

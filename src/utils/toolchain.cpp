@@ -89,6 +89,7 @@ void Utils::Toolchain::scan()
 
 namespace
 {
+#if defined(_WIN32)
   void runInstallScript(fs::path mingwPath, bool forceUpdate) {
     // C:\msys64\usr\bin\mintty.exe --hold=error /bin/env MSYSTEM=MINGW64 /bin/bash -l %self_path%mingw_create_env.sh
     auto minttyPath = mingwPath / "usr" / "bin" / "mintty.exe";
@@ -101,7 +102,7 @@ namespace
     std::string envVars = "MSYSTEM=MINGW64 ";
     if (forceUpdate) envVars += "FORCE_UPDATE=true ";
     std::string command = minttyPath.string() + " --hold=error /bin/env " + envVars + "/bin/bash -l ";
-    
+
     fs::path scriptPath = Utils::Proc::getAppResourcePath() / "data" / "scripts" / "mingw_create_env.sh";
     command += "\"" + scriptPath.string() + "\"";
 
@@ -109,6 +110,34 @@ namespace
     printf("Res: %s : %s\n", command.c_str(), res.c_str());
     installing.store(false);
   }
+#elif defined(__APPLE__)
+  void runInstallScript(bool forceUpdate) {
+    fs::path scriptPath = Utils::Proc::getAppResourcePath() / "data" / "scripts" / "macos_create_env.sh";
+
+    // Make the script executable in case git didn't preserve the bit
+    fs::permissions(scriptPath,
+      fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec,
+      fs::perm_options::add);
+
+    // build-toolchain.sh lives in the source tree under vendored/, not inside the .app bundle.
+    // Pass its absolute path as an env var so the script doesn't need to guess via relative paths.
+    fs::path toolchainBuilder = Utils::Proc::getAppResourcePath() / "vendored" / "libdragon" / "tools" / "build-toolchain.sh";
+    std::string envVars = "TOOLCHAIN_BUILDER=\\\"" + toolchainBuilder.string() + "\\\" ";
+    if (forceUpdate) envVars += "FORCE_UPDATE=true ";
+
+    // Open a new Terminal window, bring it to front, then run the script
+    std::string osa =
+      "osascript"
+      " -e 'tell application \"Terminal\" to activate'"
+      " -e 'tell application \"Terminal\" to do script \""
+      + envVars
+      + "bash \\\"" + scriptPath.string() + "\\\"\"'";
+
+    auto res = Utils::Proc::runSync(osa);
+    printf("Launched macOS install script: %s\n", res.c_str());
+    installing.store(false);
+  }
+#endif
 }
 
 void Utils::Toolchain::install()
@@ -120,7 +149,15 @@ void Utils::Toolchain::install()
 
   installing.store(true);
   bool isInstalled = state.hasToolchain && state.hasLibdragon && state.hasTiny3d;
+#if defined(_WIN32)
   std::thread installThread(runInstallScript, state.mingwPath, isInstalled);
+#elif defined(__APPLE__)
+  std::thread installThread(runInstallScript, isInstalled);
+#else
+  // Linux: no auto-install supported; should not be reachable from UI
+  installing.store(false);
+  return;
+#endif
   installThread.detach();
 }
 
