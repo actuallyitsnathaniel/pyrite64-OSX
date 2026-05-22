@@ -122,7 +122,7 @@ bool Editor::ToolchainOverlay::draw()
       "Tiny3D"
     };
     bool STEP_DONE[] = {
-      isWindows ? !toolState.mingwPath.empty() : !toolState.toolchainPath.empty(),
+      isWindows ? !toolState.mingwPath.empty() : (isApple ? toolState.hasHomebrew : !toolState.toolchainPath.empty()),
       toolState.hasToolchain,
       toolState.hasLibdragon && toolState.upToDateLibs,
       toolState.hasTiny3d && toolState.upToDateLibs
@@ -177,6 +177,14 @@ bool Editor::ToolchainOverlay::draw()
             "If you wish to update it, press the update button below.",
             ctx.toolchain.getState().toolchainPath.string().c_str()
           );
+        } else if(!toolState.hasHomebrew) {
+          ImGui::Text(
+            "Homebrew is required to install the N64 toolchain.\n"
+            "Please install it first, then reopen this dialog."
+          );
+          ImGui::Dummy({0, 4_px});
+          ImGui::SetCursorPosX(posX);
+          ImGui::TextLinkOpenURL("https://brew.sh", "https://brew.sh");
         } else {
           ImGui::Text(
             "The N64 toolchain is missing or not properly installed.\n"
@@ -185,8 +193,6 @@ bool Editor::ToolchainOverlay::draw()
             "This takes 15-30 minutes on first install — please leave it running.\n"
           );
           ImGui::Dummy({0, 4_px});
-          ImGui::SetCursorPosX(posX);
-          ImGui::TextLinkOpenURL("Requires Homebrew to be installed.", "https://brew.sh");
           ImGui::SetCursorPosX(posX);
           ImGui::Text(
             "After installation, set N64_INST in your shell profile (~/.zshrc)\n"
@@ -231,7 +237,7 @@ bool Editor::ToolchainOverlay::draw()
         ImGui::GetCursorPosY() + 20_px
       });
 
-      if((isWindows && STEP_DONE[0]) || isApple) {
+      if((isWindows && STEP_DONE[0]) || (isApple && toolState.hasHomebrew)) {
         if (ImGui::Button(allDone ? "Update" : "Install", {150_px, 40_px})) {
           ctx.toolchain.install();
         }

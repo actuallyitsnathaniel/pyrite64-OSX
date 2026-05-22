@@ -32,16 +32,29 @@ brew install git make python3 libpng pkg-config --quiet
 echo "Installing Homebrew build dependencies for toolchain..."
 brew install -q gmp mpfr libmpc gsed isl make python3 texinfo ninja
 
-# TOOLCHAIN_BUILDER may be injected by Pyrite64 (absolute path, works from .app bundle).
-# Otherwise resolve it relative to this script's location, trying two locations:
-#   1. Resources/vendor/build-toolchain.sh  — when run from inside a .app bundle
-#   2. <project-root>/vendored/libdragon/tools/build-toolchain.sh  — dev source tree
+# Resolve script and repo locations.
+# SCRIPT_DIR is data/scripts/ inside the repo (or Resources/data/scripts/ in a .app bundle).
+# REPO_ROOT is the project root — two levels up from data/scripts/ in the dev tree.
+# TOOLCHAIN_BUILDER may be injected by Pyrite64 as an absolute path (works from .app bundle).
 if [ -z "${TOOLCHAIN_BUILDER:-}" ]; then
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   TOOLCHAIN_BUILDER="$SCRIPT_DIR/../../vendor/build-toolchain.sh"
   if [ ! -f "$TOOLCHAIN_BUILDER" ]; then
     TOOLCHAIN_BUILDER="$SCRIPT_DIR/../../../vendored/libdragon/tools/build-toolchain.sh"
   fi
+fi
+
+# Derive REPO_ROOT from SCRIPT_DIR when running from the dev source tree.
+# When running from a .app bundle REPO_ROOT won't exist, so vendored paths won't be used.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../../" 2>/dev/null && pwd || true)"
+VENDORED_LIBDRAGON=""
+VENDORED_TINY3D=""
+if [ -f "$REPO_ROOT/vendored/libdragon/Makefile" ]; then
+  VENDORED_LIBDRAGON="$REPO_ROOT/vendored/libdragon"
+fi
+if [ -f "$REPO_ROOT/vendored/tiny3d/Makefile" ]; then
+  VENDORED_TINY3D="$REPO_ROOT/vendored/tiny3d"
 fi
 
 if [ ! -f "$TOOLCHAIN_BUILDER" ]; then
@@ -68,17 +81,22 @@ if [ ! -x "$N64_INST/bin/mips64-elf-gcc" ]; then
 fi
 
 # --- Libdragon ---
-if [ -d "$workpath/libdragon" ]; then
+if [ -n "$VENDORED_LIBDRAGON" ]; then
+  echo "Using vendored libdragon at: $VENDORED_LIBDRAGON"
+  LIBDRAGON_DIR="$VENDORED_LIBDRAGON"
+elif [ -d "$workpath/libdragon" ]; then
   echo "Libdragon already cloned, updating..."
   cd "$workpath/libdragon"
   git checkout preview
   git pull
+  LIBDRAGON_DIR="$workpath/libdragon"
 else
   echo "Cloning libdragon (preview branch)..."
   git clone -b preview https://github.com/DragonMinded/libdragon.git "$workpath/libdragon"
-  cd "$workpath/libdragon"
+  LIBDRAGON_DIR="$workpath/libdragon"
 fi
 
+cd "$LIBDRAGON_DIR"
 if [[ ! -f "$N64_INST/bin/n64tool" || "${FORCE_UPDATE:-}" == "true" ]]; then
   echo "Building libdragon..."
   make clean && make -C tools clean
@@ -92,16 +110,21 @@ fi
 cd "$workpath"
 
 # --- Tiny3D ---
-if [ -d "$workpath/tiny3d" ]; then
+if [ -n "$VENDORED_TINY3D" ]; then
+  echo "Using vendored Tiny3D at: $VENDORED_TINY3D"
+  TINY3D_DIR="$VENDORED_TINY3D"
+elif [ -d "$workpath/tiny3d" ]; then
   echo "Tiny3D already cloned, updating..."
   cd "$workpath/tiny3d"
   git pull
+  TINY3D_DIR="$workpath/tiny3d"
 else
   echo "Cloning Tiny3D..."
   git clone https://github.com/HailToDodongo/tiny3d.git "$workpath/tiny3d"
-  cd "$workpath/tiny3d"
+  TINY3D_DIR="$workpath/tiny3d"
 fi
 
+cd "$TINY3D_DIR"
 if [[ ! -f "$N64_INST/bin/gltf_to_t3d" || "${FORCE_UPDATE:-}" == "true" ]]; then
   echo "Building Tiny3D..."
   make clean

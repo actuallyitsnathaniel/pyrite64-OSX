@@ -1,7 +1,7 @@
 Building the Editor
 ====================================
 
-| Below are instructions to build the editor on either Linux or Windows.
+| Below are instructions to build the editor on Linux, Windows, or macOS.
 | Note that due to a small dependency on libdragon, GCC is required for now.
 | On Windows, that means building via MSYS2.
 
@@ -86,11 +86,92 @@ Where ``<preset>`` is replaced with the CMake preset name corresponding to your 
 * ``linux-debug`` for Linux systems, debug version
 * ``windows-gcc-release`` for Windows systems with MSYS2, release version
 * ``windows-gcc-debug`` for Windows systems with MSYS2, debug version
+* ``macos-release`` for macOS systems, release version
 
 | Once the build is finished, a program called ``pyrite64`` (or ``pyrite64.exe``) should be placed in the root directory of the repo.
 | The program itself can be placed anywhere on the system, however the ``./data`` and ``./n64`` directories must stay next to it.
 
 To open the editor, simply execute ``./pyrite64`` (or ``.\pyrite64.exe``).
+
+
+====================
+macOS
+====================
+
+macOS requires a few extra steps compared to Linux and Windows, because the N64 toolchain (mips64-elf compiler, libdragon, Tiny3D) must be built from source.
+
+Prerequisites
+-------------
+
+Before building, make sure the following are installed:
+
+* **Xcode Command Line Tools** — provides ``clang``, ``git``, ``make``:
+
+  .. code-block:: sh
+
+    xcode-select --install
+
+* **Homebrew** — required by the in-app toolchain installer (https://brew.sh):
+
+  .. code-block:: sh
+
+    /bin/bash -c "$(curl -fsSL https://brew.sh/install.sh)"
+
+* **CMake and Ninja** via Homebrew:
+
+  .. code-block:: sh
+
+    brew install cmake ninja
+
+* **Git LFS** via Homebrew:
+
+  .. code-block:: sh
+
+    brew install git-lfs
+
+Clone and build
+---------------
+
+.. code-block:: sh
+
+  git clone <repo-url> pyrite64
+  cd pyrite64
+  git submodule update --init --recursive
+  git lfs install && git lfs pull
+  cmake --preset macos-release
+  cmake --build --preset macos-release
+
+.. note::
+  ``git lfs pull`` is required. If skipped, binary assets (fonts, textures) will be corrupted stubs and the editor will crash on launch.
+
+Run the editor
+--------------
+
+.. code-block:: sh
+
+  ./pyrite64.app/Contents/MacOS/pyrite64
+
+Install the N64 toolchain
+--------------------------
+
+On first launch, the **Toolchain Manager** will open automatically. Click **Install** — a Terminal window will open and run the automated installer, which:
+
+1. Installs Homebrew build dependencies (``gmp``, ``mpfr``, ``gcc``, etc.)
+2. Builds the MIPS64 cross-compiler from source (~15–30 minutes)
+3. Clones and builds libdragon (``preview`` branch)
+4. Clones and builds Tiny3D and its GLTF importer tool
+
+Leave the Terminal window open until it finishes. Once complete, add the following to your shell profile (``~/.zshrc`` or ``~/.bash_profile``):
+
+.. code-block:: sh
+
+  export N64_INST="$HOME/.local/n64"
+  export PATH="$N64_INST/bin:$PATH"
+
+Then restart the editor. All four steps in the Toolchain Manager should show green.
+
+.. note::
+  The toolchain install path defaults to ``$HOME/.local/n64``. If you already have a toolchain elsewhere, set ``N64_INST`` to that path before launching the installer.
 
 
 .. _MSYS2: https://www.msys2.org/

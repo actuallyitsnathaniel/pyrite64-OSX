@@ -5,6 +5,8 @@
 #include "theme.h"
 
 #include <array>
+#include <cstdio>
+#include <filesystem>
 
 #include "imgui.h"
 #include "IconsMaterialDesignIcons.h"
@@ -35,6 +37,19 @@ namespace
   constinit bool needsUpdate{true};
   constinit int zoomLevel{4};
 
+  void checkFontFile(const char* path)
+  {
+    std::error_code ec;
+    auto size = std::filesystem::file_size(std::filesystem::path(path), ec);
+    if(!ec && size < 1024) {
+      fprintf(stderr,
+        "ERROR: Font file '%s' is only %zu bytes — likely a Git LFS pointer stub.\n"
+        "Fix: run 'git lfs install && git lfs pull' in the repository root.\n",
+        path, (size_t)size
+      );
+    }
+  }
+
   void loadFonts(float contentScale = 1.0f)
   {
     ImGuiStyle& style = ImGui::GetStyle();
@@ -46,6 +61,7 @@ namespace
       style.FontScaleDpi = 1.0f;
 
       style.FontSizeBase = 15.0f;
+      checkFontFile("./data/Altinn-DINExp.ttf");
       ImFont* font = io.Fonts->AddFontFromFileTTF("./data/Altinn-DINExp.ttf");
       IM_ASSERT(font != nullptr);
 
@@ -54,9 +70,11 @@ namespace
       icons_config.MergeMode = true;
       icons_config.PixelSnapH = true;
       icons_config.GlyphMinAdvanceX = 16.0f;
+      checkFontFile("./data/materialdesignicons-webfont.ttf");
       font = io.Fonts->AddFontFromFileTTF("./data/materialdesignicons-webfont.ttf", 16, &icons_config, icons_ranges);
       IM_ASSERT(font != nullptr);
 
+      checkFontFile("./data/GoogleSansCode.ttf");
       fontMono = io.Fonts->AddFontFromFileTTF("./data/GoogleSansCode.ttf", 16);
       IM_ASSERT(fontMono != nullptr);
     }

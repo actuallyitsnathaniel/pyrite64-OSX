@@ -69,6 +69,9 @@ void Utils::Toolchain::scan()
                     && fs::exists(state.toolchainPath / "mips64-elf" / "include" / "t3d");
 
   #else
+    #if defined(__APPLE__)
+    state.hasHomebrew = fs::exists("/opt/homebrew/bin/brew") || fs::exists("/usr/local/bin/brew");
+    #endif
     char* n64InstEnv = getenv("N64_INST");
     if(n64InstEnv) {
       state.toolchainPath = fs::path{n64InstEnv};
