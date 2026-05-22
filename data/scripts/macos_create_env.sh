@@ -23,14 +23,23 @@ if ! command -v brew &>/dev/null; then
   exit 1
 fi
 
-echo "Installing build prerequisites..."
-brew install git make python3 libpng pkg-config --quiet
+already_installed=false
+if [[ -x "$N64_INST/bin/mips64-elf-gcc" && -f "$N64_INST/bin/n64tool" && -f "$N64_INST/bin/gltf_to_t3d" && "${FORCE_UPDATE:-}" != "true" ]]; then
+  already_installed=true
+fi
 
-# --- N64 MIPS64 cross-compiler toolchain (built from source via vendored script) ---
-# The libdragon project provides build-toolchain.sh with full macOS/Homebrew support.
-# It installs its own Homebrew deps (gmp, mpfr, etc.) and builds GCC 14 + binutils + newlib.
-echo "Installing Homebrew build dependencies for toolchain..."
-brew install -q gmp mpfr libmpc gsed isl make python3 texinfo ninja
+if [ "$already_installed" = false ]; then
+  echo "Installing build prerequisites..."
+  brew install git make python3 libpng pkg-config --quiet
+
+  # --- N64 MIPS64 cross-compiler toolchain (built from source via vendored script) ---
+  # The libdragon project provides build-toolchain.sh with full macOS/Homebrew support.
+  # It installs its own Homebrew deps (gmp, mpfr, etc.) and builds GCC 14 + binutils + newlib.
+  echo "Installing Homebrew build dependencies for toolchain..."
+  brew install -q gmp mpfr libmpc gsed isl make python3 texinfo ninja
+else
+  echo "All components already installed, skipping Homebrew dependency checks."
+fi
 
 # Resolve script and repo locations.
 # SCRIPT_DIR is data/scripts/ inside the repo (or Resources/data/scripts/ in a .app bundle).
@@ -40,14 +49,14 @@ if [ -z "${TOOLCHAIN_BUILDER:-}" ]; then
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   TOOLCHAIN_BUILDER="$SCRIPT_DIR/../../vendor/build-toolchain.sh"
   if [ ! -f "$TOOLCHAIN_BUILDER" ]; then
-    TOOLCHAIN_BUILDER="$SCRIPT_DIR/../../../vendored/libdragon/tools/build-toolchain.sh"
+    TOOLCHAIN_BUILDER="$SCRIPT_DIR/../../vendored/libdragon/tools/build-toolchain.sh"
   fi
 fi
 
 # Derive REPO_ROOT from SCRIPT_DIR when running from the dev source tree.
 # When running from a .app bundle REPO_ROOT won't exist, so vendored paths won't be used.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../../" 2>/dev/null && pwd || true)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../" 2>/dev/null && pwd || true)"
 VENDORED_LIBDRAGON=""
 VENDORED_TINY3D=""
 if [ -f "$REPO_ROOT/vendored/libdragon/Makefile" ]; then
