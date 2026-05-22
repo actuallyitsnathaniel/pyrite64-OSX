@@ -5,15 +5,35 @@
 #include "toolchain.h"
 #include "logger.h"
 #include "proc.h"
+#include "fs.h"
+#include "json.hpp"
+#include "prop.h"
+#include "json.h"
+#include "jsonBuilder.h"
 #include <filesystem>
 #include <atomic>
 #include <thread>
 
-#include "fs.h"
-
 namespace
 {
   std::atomic_bool installing{false};
+}
+
+void Utils::Toolchain::load()
+{
+  auto doc = Utils::JSON::loadFile(Utils::Proc::getAppDataPath() / "toolchain.json");
+  if(doc.is_object() && doc.contains("toolchainPath")) {
+    auto path = doc.value("toolchainPath", std::string{});
+    if(!path.empty()) state.toolchainPath = fs::path{path};
+  }
+}
+
+void Utils::Toolchain::save()
+{
+  std::string json = Utils::JSON::Builder{}
+    .set("toolchainPath", state.toolchainPath.string())
+    .toString();
+  Utils::FS::saveTextFile(Utils::Proc::getAppDataPath() / "toolchain.json", json);
 }
 
 void Utils::Toolchain::scan()
@@ -53,6 +73,11 @@ void Utils::Toolchain::scan()
     if(n64InstEnv) {
       state.toolchainPath = fs::path{n64InstEnv};
     }
+    // Fall back to previously saved path — needed when launched as .app from Finder,
+    // which doesn't source ~/.zshrc so N64_INST env var is absent.
+    if(state.toolchainPath.empty()) {
+      load();
+    }
     if(state.toolchainPath.empty())return;
 
     state.hasToolchain = fs::exists(state.toolchainPath / "bin" / "mips64-elf-gcc");
@@ -64,6 +89,11 @@ void Utils::Toolchain::scan()
     state.hasTiny3d = fs::exists(state.toolchainPath / "bin" / "gltf_to_t3d")
                     && fs::exists(state.toolchainPath / "include" / "t3d.mk")
                     && fs::exists(state.toolchainPath / "mips64-elf" / "include" / "t3d");
+
+    // Persist the resolved path so future launches find it without the env var
+    if(state.hasToolchain) {
+      save();
+    }
   #endif
 
   if(state.hasLibdragon && state.hasTiny3d)

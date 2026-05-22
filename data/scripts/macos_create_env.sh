@@ -55,6 +55,8 @@ if [[ ! -x "$N64_INST/bin/mips64-elf-gcc" || "${FORCE_UPDATE:-}" == "true" ]]; t
   echo "Building MIPS64 cross-compiler toolchain (~15-30 minutes, please wait)..."
   export BUILD_PATH="$workpath/toolchain"
   mkdir -p "$BUILD_PATH"
+  # cd to workpath first — autotools breaks if CWD contains spaces
+  cd "$workpath"
   bash "$TOOLCHAIN_BUILDER"
 else
   echo "MIPS64 toolchain already installed, skipping build."

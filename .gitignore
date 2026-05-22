@@ -9,4 +9,6 @@ pyrite64
 *.pak
 pyrite64.*
 *.dll
+toolchain
 preferences.json
+.DS_Store

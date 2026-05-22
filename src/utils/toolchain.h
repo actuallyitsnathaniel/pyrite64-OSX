@@ -27,6 +27,8 @@ namespace Utils
       State state{};
 
     public:
+      void load();
+      void save();
       void scan();
 
       void install();
