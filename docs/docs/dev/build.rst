@@ -174,4 +174,34 @@ Then restart the editor. All four steps in the Toolchain Manager should show gre
   The toolchain install path defaults to ``$HOME/.local/n64``. If you already have a toolchain elsewhere, set ``N64_INST`` to that path before launching the installer.
 
 
+Known issues
+----------
+
+**AppleClang narrowing error in surface.h**
+
+If you update the ``vendored/libdragon`` submodule to a newer upstream commit,
+AppleClang may reject the build with an error like::
+
+  error: narrowing conversion of 'format' from 'tex_format_t' to 'uint16_t'
+
+This is because AppleClang enforces C++11 narrowing rules more strictly than GCC.
+The upstream libdragon source may not include the required cast.
+
+To fix it, open ``vendored/libdragon/include/surface.h`` and find the line (~172)
+inside the ``surface_make`` function that reads:
+
+.. code-block:: c
+
+  .flags = format,
+
+Change it to:
+
+.. code-block:: c
+
+  .flags = (uint16_t)format,
+
+This fix is already applied in the pinned submodule commit. It only needs to be
+re-applied if you bump the submodule to a newer upstream commit that reverts it.
+
+
 .. _MSYS2: https://www.msys2.org/

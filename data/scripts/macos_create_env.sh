@@ -108,7 +108,8 @@ fi
 cd "$LIBDRAGON_DIR"
 if [[ ! -f "$N64_INST/bin/n64tool" || "${FORCE_UPDATE:-}" == "true" ]]; then
   echo "Building libdragon..."
-  make clean && make -C tools clean
+  make clean 2>/dev/null || true
+  make -C tools clean 2>/dev/null || true
   make -j$(sysctl -n hw.logicalcpu) libdragon && make -j$(sysctl -n hw.logicalcpu) tools
   make install
   make -C tools install
@@ -136,7 +137,7 @@ fi
 cd "$TINY3D_DIR"
 if [[ ! -f "$N64_INST/bin/gltf_to_t3d" || "${FORCE_UPDATE:-}" == "true" ]]; then
   echo "Building Tiny3D..."
-  make clean
+  make clean 2>/dev/null || true
   make -j$(sysctl -n hw.logicalcpu)
   make install
 
