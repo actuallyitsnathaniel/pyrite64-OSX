@@ -1,4 +1,4 @@
-# Pyrite64
+# Pyrite64 (macOS fork)
 
 <p align="center">
 <img src="./data/img/titleLogo.png" width="400">
@@ -8,6 +8,10 @@
 N64 game-engine and editor using <a href="https://github.com/DragonMinded/libdragon">Libdragon</a> and <a href="https://github.com/HailToDodongo/tiny3d">tiny3d</a>.
 </p>
 <br/>
+
+> **This is an unofficial macOS port** of [pyrite64](https://github.com/HailToDodongo/pyrite64) by [@actuallyitsnathaniel](https://github.com/actuallyitsnathaniel).
+> It adds native macOS build support and an automated N64 toolchain installer for Apple Silicon and Intel Macs.
+> Upstream changes are merged regularly.
 
 <p align="center">
   <img src="./docs/_static/img/editor00.png" width="350">&nbsp;&nbsp;&nbsp;&nbsp;
@@ -22,7 +26,7 @@ N64 game-engine and editor using <a href="https://github.com/DragonMinded/libdra
 
 Pyrite64 is a visual editor + runtime-engine to create 3D games that can run on a real N64 console or accurate emulators.<br>
 Besides the usual editor, some extra features include:
-- Automatic toolchain installation on Windows
+- Automatic toolchain installation on **Windows and macOS**
 - 3D-Model import (GLTF) from blender with [fast64](https://github.com/Fast-64/fast64) material support.
 - Support for HDR+Bloom rendering (shown here: www.youtube.com/watch?v=XP8g2ngHftY)
 - Support for big-texture rendering (256x256) (shown here: www.youtube.com/watch?v=rNEo0aQkGnU)
@@ -36,6 +40,57 @@ Emulators that are accurate enough include [Ares (v147 or newer)](https://ares-e
 > [!WARNING]
 > This project is still in early development, so features are going to be missing.<br>
 > Documentation is also still a work in progress, and breaking API changes are to be expected.
+
+## macOS Quick Start
+
+### 1. Prerequisites
+
+```sh
+xcode-select --install
+/bin/bash -c "$(curl -fsSL https://brew.sh/install.sh)"
+brew install cmake ninja git-lfs
+```
+
+### 2. Clone and build
+
+```sh
+git clone https://github.com/actuallyitsnathaniel/pyrite64-OSX pyrite64
+cd pyrite64
+git submodule update --init --recursive
+git lfs install && git lfs pull
+cmake --preset macos-release
+cmake --build --preset macos-release
+```
+
+> **Note:** `git lfs pull` is required. If skipped, binary assets (fonts, textures) will be corrupted stubs and the editor will crash on launch.
+
+### 3. Run the editor
+
+```sh
+./pyrite64.app/Contents/MacOS/pyrite64
+```
+
+### 4. Install the N64 toolchain
+
+On first launch the **Toolchain Manager** opens automatically. Click **Install** — a Terminal window will open and:
+
+1. Install Homebrew build dependencies (`gmp`, `mpfr`, `gcc`, etc.)
+2. Build the MIPS64 cross-compiler from source (~15–30 min)
+3. Build libdragon (`preview` branch)
+4. Build Tiny3D and its GLTF importer
+
+Leave the Terminal window open until it finishes. Once done, add this to your shell profile (`~/.zshrc` or `~/.bash_profile`):
+
+```sh
+export N64_INST="$HOME/.local/n64"
+export PATH="$N64_INST/bin:$PATH"
+```
+
+Then restart the editor. All four steps in the Toolchain Manager should show green.
+
+> If you already have a toolchain elsewhere, set `N64_INST` to that path before launching the installer.
+
+---
 
 ## Documentation
 
